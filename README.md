@@ -1,7 +1,7 @@
 # 🚀 Cryptocurrency Data Pipeline with Snowflake & Snowpark
 
 ### **📄 Project Summary**  
-Demo Link: 
+Quickstart: 
 
 Youtube: 
 
