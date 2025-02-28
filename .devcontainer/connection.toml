@@ -1,0 +1,8 @@
+[default]
+account = "myaccount"
+user = "myuser"
+password = "mypassword"
+role = "CRYPTO_ROLE"
+warehouse = "CRYPTO_WH"
+database = "CRYPTO_DB"
+schema = "ANALYTICS"
