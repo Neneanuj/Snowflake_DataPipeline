@@ -1,4 +1,3 @@
-import time
 from snowflake.snowpark import Session
 from snowflake.snowpark.functions import col, lit, to_timestamp, convert_timezone
 
