@@ -15,10 +15,6 @@ The system provides:
 - Automate **data ingestion & processing** using **Snowflake Tasks**.
 - Deploy & schedule workflows using **GitHub Actions & Snowflake Notebooks**.
 
----
-
-## **🔑 Features**
-
 
 ---
 
