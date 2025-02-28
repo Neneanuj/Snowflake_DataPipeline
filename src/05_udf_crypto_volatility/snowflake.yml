@@ -1,0 +1,24 @@
+definition_version: 1
+snowpark:
+  project_name: "crypto"
+  stage_name: "analytics.deployment"
+  src: "udf_crypto_volatility/"
+  functions:
+    - name: "calculate_daily_volatility"
+      database: "crypto_db"
+      schema: "analytics"
+      handler: "function.calculate_daily_volatility"
+      runtime: "3.8"  
+      signature:
+        - name: "prices"
+          type: "array(float)"
+      returns: "float"
+    - name: "calculate_weekly_volatility"
+      database: "crypto_db"  
+      schema: "analytics"
+      handler: "function.calculate_weekly_volatility"
+      runtime: "3.8"
+      signature:
+        - name: "prices"
+          type: "array(float)"
+      returns: "float"

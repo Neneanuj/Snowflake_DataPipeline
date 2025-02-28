@@ -1,4 +1,3 @@
-
 import time
 from snowflake.snowpark import Session
 import snowflake.snowpark.functions as F

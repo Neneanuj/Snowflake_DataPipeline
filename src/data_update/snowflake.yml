@@ -1,0 +1,13 @@
+definition_version: 1
+snowpark:
+  project_name: "crypto"
+  stage_name: "harmonized.deployment"
+  src: "data_update/"
+  procedures:
+    - name: "data_update"
+      database: "crypto_db"
+      schema: "harmonized"
+      handler: "procedure.main"
+      runtime: "3.12"
+      signature: ""
+      returns: string
