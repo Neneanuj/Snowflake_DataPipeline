@@ -48,15 +48,6 @@ The system provides:
 
 ---
 
-## **🛠️ User Guide**
-1. Users can choose different ways to extract data. 
-2. When user inputs a PDF or URL, it will be temporarily stored in S3 first
-3. PDF data will be processed through the API call function to obtain the table image and text
-4. Text will be marked down in two ways (docling markitdown)
-5. Finally a **download link** will be returned, which contains all the output files.
-
----
-
 ## **📂 Project Structure**
 ```plaintext
 crypto-data-pipeline/
