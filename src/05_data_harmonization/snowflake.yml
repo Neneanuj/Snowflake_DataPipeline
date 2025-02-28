@@ -1,0 +1,16 @@
+definition_version: 1
+snowpark:
+  project_name: "crypto"
+  stage_name: "harmonized.deployment"
+  src: "data_harmonization/"
+  procedures:
+    - name: "data_harmonization"
+      database: "crypto_db"
+      schema: "HARMONIZED"
+      handler: "data_harmonization.main"
+      runtime: "3.8"  
+      signature:
+        - name: "session"
+          type: "variant"
+      returns: "string"
+  

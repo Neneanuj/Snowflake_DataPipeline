@@ -8,7 +8,7 @@ def load_crypto_data(session):
     
     copy_command = """
         COPY INTO RAW.CRYPTO_DATA
-        FROM @RAW.CRYPTO_RAW_STAGE
+        FROM @RAW.CRYPTO_S3_INIT
         FILE_FORMAT = RAW.CSV_FORMAT
         ON_ERROR = 'CONTINUE'
     """

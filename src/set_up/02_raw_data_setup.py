@@ -45,16 +45,6 @@ CREATE OR REPLACE FILE FORMAT RAW.CSV_FORMAT
     EMPTY_FIELD_AS_NULL = TRUE;
 """
 
-# 3. Create an external stage to load cryptocurrency data stored in S3
-template_stage = """
-CREATE OR REPLACE STAGE RAW.CRYPTO_RAW_STAGE
-    URL = 's3://{{ bucket }}/crypto_data.csv'
-    CREDENTIALS = (
-         AWS_KEY_ID = '{{ key_id }}',
-         AWS_SECRET_KEY = '{{ secret_key }}'
-    )
-    FILE_FORMAT = RAW.CSV_FORMAT;
-"""
 
 # 4. Create the target table for storing raw-layer cryptocurrency data
 template_table = """
@@ -115,10 +105,7 @@ def main():
         # 2. Create the CSV file format
         execute_sql(session, template_file_format)
         
-        # 3. Create the external stage
-        stage_template = Template(template_stage)
-        stage_sql = stage_template.render(bucket=bucket_name, key_id=aws_access_key_id, secret_key=aws_secret_access_key)
-        execute_sql(session, stage_sql)
+      
         
         # 4. Create the target table
         execute_sql(session, template_table)

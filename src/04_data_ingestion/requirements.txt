@@ -1,4 +1,3 @@
 snowflake-snowpark-python
-yfinance 
-pandas 
+yfinance  
 boto3 
