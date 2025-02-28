@@ -1,0 +1,4 @@
+snowflake-snowpark-python
+yfinance 
+pandas 
+boto3 

@@ -1,0 +1,20 @@
+definition_version: 1
+snowpark:
+  project_name: "crypto"
+  stage_name: "raw.deployment"
+  src: "data_ingestion/"
+  functions:
+    - name: "api_transformation"
+      database: "crypto_db"
+      schema: "raw"
+      handler: "03_api_transformation.main"
+      runtime: "3.8"  
+      signature: []   
+      returns: string
+    - name: "load_crpyto_data"
+      database: "crypto_db"  
+      schema: "raw"
+      handler: "04_load_crypto_data.main"
+      runtime: "3.8"
+      signature: []    
+      returns: string

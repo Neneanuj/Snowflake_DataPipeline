@@ -3,66 +3,58 @@ from snowflake.snowpark import Session
 from snowflake.snowpark.functions import col, lit, to_timestamp, convert_timezone
 
 def transform_crypto_data(session):
-    # Use the raw schema
-    session.use_schema("RAW")
+    # 切换到 HARMONIZED schema
+    session.use_schema("HARMONIZED")
     
-    # Read data from the raw table
-    raw_df = session.table("CRYPTO_DATA")
+    # 从 RAW 层读取数据，假设表名为 CRYPTO_DATA
+    raw_df = session.table("RAW.CRYPTO_DATA")
     
-    # Create a list of all tickers
+    # 打印列名以便调试（可选）
+    print("Columns in RAW.CRYPTO_DATA:", raw_df.columns)
+    
+    # 定义所有币种列表
     tickers = ["BTC-USD", "DOGE-USD", "ETH-USD"]
     
-    # Initialize an empty list to store transformed dataframes
     transformed_dfs = []
-    
-    # Process each ticker
     for ticker in tickers:
-        # Select and rename columns for this ticker
+        # 对于 "BTC-USD"，prefix 应为 "BTC"
+        prefix = ticker.split('-')[0]
+        # 根据实际的列名格式（币名在前面），使用 f"{prefix}_OPEN", f"{prefix}_CLOSE" 等
         ticker_df = raw_df.select(
-            col("Date").alias("date"),
+            col("OBSERVATION_DATE").alias("date"),
             lit(ticker).alias("ticker"),
-            col(f"Open_{ticker.split('-')[0]}").alias("open"),
-            col(f"High_{ticker.split('-')[0]}").alias("high"),
-            col(f"Low_{ticker.split('-')[0]}").alias("low"),
-            col(f"Close_{ticker.split('-')[0]}").alias("close"),
-            col(f"Volume_{ticker.split('-')[0]}").alias("volume")
+            col(f"{prefix}_OPEN").alias("open"),
+            col(f"{prefix}_HIGH").alias("high"),
+            col(f"{prefix}_LOW").alias("low"),
+            col(f"{prefix}_CLOSE").alias("close"),
+            col(f"{prefix}_VOLUME").alias("volume")
         )
         transformed_dfs.append(ticker_df)
     
-    # Union all ticker dataframes
+    # Union 所有币种数据
     harmonized_df = transformed_dfs[0]
     for df in transformed_dfs[1:]:
         harmonized_df = harmonized_df.union(df)
     
-    # Standardize timestamps to UTC
+    # 标准化时间戳到 UTC
     harmonized_df = harmonized_df.withColumn(
         "date", 
-        convert_timezone("UTC", to_timestamp(col("date")))
+        convert_timezone(lit("UTC"), to_timestamp(col("date")))
     )
     
+    # 去重并写入新表
     harmonized_df = harmonized_df.drop_duplicates()
-    session.use_schema("HARMONIZED")
-    
-    # Create or replace the harmonized table
     harmonized_df.write.mode("overwrite").save_as_table("CRYPTO_HARMONIZED")
     
-    
     print("Data successfully transformed and loaded into HARMONIZED.CRYPTO_HARMONIZED")
-    
     return harmonized_df
 
-
-    
-
-# Main execution function
 def main(session):
     harmonized_df = transform_crypto_data(session)
-    
-    
-    # Return sample of transformed data
     return harmonized_df.limit(10)
 
 # For local debugging
 if __name__ == "__main__":
     with Session.builder.getOrCreate() as session:
-        main(session)
+        sample = main(session)
+        sample.show()
