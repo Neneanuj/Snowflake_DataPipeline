@@ -46,44 +46,72 @@ The system provides:
 
 ## **📂 Project Structure**
 ```plaintext
-crypto-data-pipeline/
-│── .github/
-│   └── workflows/              # GitHub Actions for CI/CD
-│       └── deploy.yml
-│
-│── docs/                       # Documentation
-│   ├── architecture_diagram.png
-│   ├── README.md                # Project overview
-│   ├── AIUseDisclosure.md        # AI usage disclosure
-│   ├── setup_instructions.md     # Setup guide
-│
-│── notebooks/                   # Jupyter or Snowflake Notebooks
-│   ├── data_exploration.ipynb    # Exploratory analysis
-│   ├── snowflake_pipeline.ipynb  # Snowflake Notebook for processing
-│
-│── sql/                         # SQL scripts for Snowflake
-│   ├── create_schemas.sql        # Schema creation
-│   ├── create_tables.sql         # Table creation
-│   ├── stored_procedures.sql      # Stored procedures
-│   ├── tasks.sql                  # Snowflake tasks automation
-│
-│── src/                         # Source code for data pipeline
-│   ├── load_data.py              # Fetches and loads crypto data
-│   ├── transform_data.py         # Cleans & processes data in Snowpark
-│   ├── analytics.py              # Computes performance metrics
-│   ├── config.py                 # Configurations (API keys, Snowflake creds)
-│
-│── tests/                       # Unit tests for pipeline
-│   ├── test_udfs.py              # Tests SQL & Python UDFs
-│   ├── test_pipeline.py          # Validates data ingestion
-│
-│── requirements.txt             # Python dependencies
-│── Dockerfile                   # Containerized deployment (optional)
-│── .gitignore                    # Ignore unnecessary files
-│── LICENSE                       # Open-source license
-│── setup.py                      # Setup script (if using as a package)
-│── CONTRIBUTING.md               # Guidelines for collaboration
-│── CODE_OF_CONDUCT.md            # Community standards
+📦 Snowflake_DataPipeline
+├── 📂 .devcontainer             # Development container setup
+│   ├── Dockerfile
+│   ├── config.toml
+│   ├── connection.toml
+│   ├── devcontainer.json
+├── 📂 .github/workflows         # GitHub Actions CI/CD
+│   ├── deploy.yml
+├── 📂 docs                      # Documentation
+│   ├── codelab.json
+│   ├── codelab.md
+│   ├── index.html
+├── 📂 src                       # Source code for Snowflake ETL pipeline
+│   ├── 📂 03_airflow             # Airflow orchestration scripts
+│   │   ├── 03_api_transformation.py
+│   ├── 📂 04_data_ingestion       # Data ingestion scripts
+│   │   ├── data_ingestion/
+│   │   │   ├── 04_load_crypto_data.py  # Loads crypto data
+│   │   │   ├── .gitignore
+│   │   │   ├── requirements.txt
+│   │   │   ├── snowflake.yml
+│   ├── 📂 05_data_harmonization   # Data transformation/harmonization
+│   │   ├── data_harmonization/
+│   │   │   ├── data_harmonization.py
+│   │   │   ├── .gitignore
+│   │   │   ├── requirements.txt
+│   │   │   ├── snowflake.yml
+│   ├── 📂 06_udf_crypto_volatility # User-defined functions (UDFs) for volatility calculations
+│   │   ├── udf_crypto_volatility/
+│   │   │   ├── __init__.py
+│   │   │   ├── function.py
+│   │   │   ├── .gitignore
+│   │   │   ├── requirements.txt
+│   │   │   ├── snowflake.yml
+│   ├── 📂 07_create_view          # SQL scripts to create views
+│   │   ├── create_view.py
+│   ├── 📂 08_data_update          # Data update processing
+│   │   ├── data_update/
+│   │   │   ├── procedure.py       # Python stored procedure for updates
+│   │   │   ├── .gitignore
+│   │   │   ├── requirements.txt
+│   │   │   ├── snowflake.yml
+│   ├── 📂 09_orchestration        # Task orchestration & automation
+│   │   ├── snowpark_notebook.ipynb  # Snowflake notebook for analysis
+│   │   ├── tasks_setup.sql        # Snowflake Task setup scripts
+├── 📂 environment_management      # Configuration & environment setup
+│   ├── config.sql.j2              # Jinja template for Snowflake setup
+│   ├── ender_config.sh            # Shell script to render templates
+├── 📂 set_up                      # Snowflake database/schema setup
+│   ├── 01_setup_snowflake.sql
+│   ├── 02_raw_data_setup.py
+│   ├── __init__.py
+├── 📂 tests                       # Unit & Integration Tests
+│   ├── test_procedures.py
+│   ├── test_udfs.py
+│   ├── test_udfs.sql
+├── .gitignore                      # Git ignore file
+├── AiUseDisclosure.md               # AI usage documentation
+├── LICENSE                          # License file
+├── README.md                        # Project Overview
+├── config.sql.j2                     # Jinja template config
+├── crypto_data.csv                   # Sample crypto dataset
+├── crypto_data_pipeline_architecture.png  # Architecture diagram
+├── dg.py                              # Additional documentation script
+├── requirements.txt                    # Python dependencies
+
 
 
 ```
