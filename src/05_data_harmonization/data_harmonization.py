@@ -3,23 +3,40 @@ from snowflake.snowpark import Session
 from snowflake.snowpark.functions import col, lit, to_timestamp, convert_timezone
 
 def transform_crypto_data(session):
-    # 切换到 HARMONIZED schema
+    """
+    Transforms raw cryptocurrency data and stores it in the HARMONIZED schema.
+    
+    Steps:
+    1. Reads raw data from the RAW schema.
+    2. Standardizes column names for different cryptocurrencies.
+    3. Combines all cryptocurrencies into a single DataFrame.
+    4. Converts timestamps to UTC.
+    5. Removes duplicates and writes transformed data into the HARMONIZED schema.
+    
+    Parameters:
+        session: The active Snowflake session.
+    
+    Returns:
+        The transformed Snowpark DataFrame.
+    """
+    
+    # Switch to the HARMONIZED schema
     session.use_schema("HARMONIZED")
     
-    # 从 RAW 层读取数据，假设表名为 CRYPTO_DATA
+    # Read data from the RAW layer, assuming the table name is CRYPTO_DATA
     raw_df = session.table("RAW.CRYPTO_DATA")
     
-    # 打印列名以便调试（可选）
+    # Print column names for debugging (optional)
     print("Columns in RAW.CRYPTO_DATA:", raw_df.columns)
     
-    # 定义所有币种列表
+    # Define the list of cryptocurrency tickers
     tickers = ["BTC-USD", "DOGE-USD", "ETH-USD"]
     
     transformed_dfs = []
     for ticker in tickers:
-        # 对于 "BTC-USD"，prefix 应为 "BTC"
+        # For "BTC-USD", the prefix should be "BTC"
         prefix = ticker.split('-')[0]
-        # 根据实际的列名格式（币名在前面），使用 f"{prefix}_OPEN", f"{prefix}_CLOSE" 等
+        # Select and rename columns using the actual format where the coin name is prefixed
         ticker_df = raw_df.select(
             col("OBSERVATION_DATE").alias("date"),
             lit(ticker).alias("ticker"),
@@ -31,18 +48,18 @@ def transform_crypto_data(session):
         )
         transformed_dfs.append(ticker_df)
     
-    # Union 所有币种数据
+    # Union all cryptocurrency data into a single DataFrame
     harmonized_df = transformed_dfs[0]
     for df in transformed_dfs[1:]:
         harmonized_df = harmonized_df.union(df)
     
-    # 标准化时间戳到 UTC
+    # Standardize timestamps to UTC
     harmonized_df = harmonized_df.withColumn(
         "date", 
         convert_timezone(lit("UTC"), to_timestamp(col("date")))
     )
     
-    # 去重并写入新表
+    # Remove duplicates and write to the new table
     harmonized_df = harmonized_df.drop_duplicates()
     harmonized_df.write.mode("overwrite").save_as_table("CRYPTO_HARMONIZED")
     
@@ -50,6 +67,15 @@ def transform_crypto_data(session):
     return harmonized_df
 
 def main(session):
+    """
+    Main function that runs the transformation and returns a sample of the harmonized data.
+    
+    Parameters:
+        session: The active Snowflake session.
+    
+    Returns:
+        A sample of 10 rows from the transformed dataset.
+    """
     harmonized_df = transform_crypto_data(session)
     return harmonized_df.limit(10)
 
