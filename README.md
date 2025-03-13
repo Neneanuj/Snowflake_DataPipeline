@@ -39,7 +39,7 @@ The system provides:
 
 ## **🛠️ Diagrams**
 
-![image](./docs/data_extraction_architecture.png)
+![image](./crypto_data_pipeline_architecture.png)
 
 
 ---
