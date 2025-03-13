@@ -1,0 +1,311 @@
+
+<!doctype html>
+
+<html>
+<head>
+  <meta name="viewport" content="width=device-width, minimum-scale=1.0, initial-scale=1.0, user-scalable=yes">
+  <meta name="theme-color" content="#4F7DC9">
+  <meta charset="UTF-8">
+  <title>🚀 Crypto Data Pipeline Codelab</title>
+  <link rel="stylesheet" href="//fonts.googleapis.com/css?family=Source+Code+Pro:400|Roboto:400,300,400italic,500,700|Roboto+Mono">
+  <link rel="stylesheet" href="//fonts.googleapis.com/icon?family=Material+Icons">
+  <link rel="stylesheet" href="https://storage.googleapis.com/claat-public/codelab-elements.css">
+  <style>
+    .success {
+      color: #1e8e3e;
+    }
+    .error {
+      color: red;
+    }
+  </style>
+</head>
+<body>
+  <google-codelab-analytics gaid="UA-49880327-14" ga4id=""></google-codelab-analytics>
+  <google-codelab codelab-gaid=""
+                  codelab-ga4id=""
+                  id="Crypto-Pipeline-Codelab"
+                  title="🚀 Crypto Data Pipeline Codelab"
+                  environment="web"
+                  feedback-link="">
+    
+      <google-codelab-step label="Page 1: Overview" duration="0">
+        <h2 is-upgraded><strong>What is Being Built?</strong></h2>
+<p>This project demonstrates the creation of a <strong>cryptocurrency data pipeline</strong> that extracts data from the YFinance API, stores it in AWS S3, processes it in Snowflake using Snowpark Python, and automates workflows with Airflow and Snowflake Tasks. The pipeline also includes CI/CD integration with GitHub Actions and environment management using Jinja templates.</p>
+<h2 is-upgraded><strong>Key Features</strong></h2>
+<ul>
+<li><strong>Data Extraction</strong>: Fetch cryptocurrency data using YFinance API.</li>
+<li><strong>Data Storage</strong>: Store raw data in AWS S3 and ingest it into Snowflake.</li>
+<li><strong>Data Transformation</strong>: Use Snowpark Python for harmonization and transformation.</li>
+<li><strong>Analytics</strong>: Build pre-computed analytics tables for insights.</li>
+<li><strong>Automation</strong>: Orchestrate workflows with Snowflake Tasks and Airflow.</li>
+<li><strong>Testing &amp; Validation</strong>: Unit tests for UDFs and stored procedures.</li>
+<li><strong>Environment Management</strong>: Manage configurations with Jinja templates.</li>
+</ul>
+<h2 is-upgraded><strong>Prerequisites</strong></h2>
+<ul>
+<li>Python 3.8+ installed (<code>python --version</code>)</li>
+<li>AWS account with S3 access</li>
+<li>Snowflake account with appropriate privileges</li>
+<li>GitHub repository setup</li>
+<li>Airflow environment (local or cloud)</li>
+<li>VSCode with Python extensions installed</li>
+</ul>
+<h2 is-upgraded><strong>What You Will Need</strong></h2>
+<ol type="1">
+<li>Python libraries: <ul>
+<li><code>yfinance</code>, <code>pandas</code>, <code>snowflake-connector-python</code>, <code>boto3</code>, <code>apache-airflow</code></li>
+</ul>
+</li>
+<li>AWS CLI configured for S3 access</li>
+<li>Snowflake CLI or Python connector for database interactions</li>
+<li>GitHub Actions setup for CI/CD</li>
+<li>Jinja templates for environment management</li>
+</ol>
+
+
+      </google-codelab-step>
+    
+      <google-codelab-step label="Page 2: Setup" duration="0">
+        <h2 is-upgraded><strong>Step-by-Step Setup Instructions</strong></h2>
+<h3 is-upgraded><strong>1️⃣ Configure AWS S3</strong></h3>
+<pre><code>  load_dotenv()
+
+  AWS_ACCESS_KEY_ID = os.getenv(&#39;AWS_ACCESS_KEY_ID&#39;)
+  AWS_SECRET_ACCESS_KEY = os.getenv(&#39;AWS_SECRET_ACCESS_KEY&#39;)
+  AWS_REGION = os.getenv(&#39;AWS_REGION&#39;)
+  AWS_BUCKET_NAME = os.getenv(&#39;S3_BUCKET_NAME&#39;) 
+</code></pre>
+<h3 is-upgraded><strong>2️⃣ Configure Snowflake</strong></h3>
+<pre><code>  USE ROLE ACCOUNTADMIN;
+
+  -- ----------------------------------------------------------------------------
+  -- Step #1: Create and assign role for Crypto Project
+  -- ----------------------------------------------------------------------------
+  SET MY_USER = CURRENT_USER();
+  CREATE OR REPLACE ROLE CRYPTO_ROLE;
+  GRANT ROLE CRYPTO_ROLE TO ROLE SYSADMIN;
+  GRANT ROLE CRYPTO_ROLE TO USER IDENTIFIER($MY_USER);
+  GRANT EXECUTE TASK ON ACCOUNT TO ROLE CRYPTO_ROLE;
+  GRANT MONITOR EXECUTION ON ACCOUNT TO ROLE CRYPTO_ROLE;
+  GRANT IMPORTED PRIVILEGES ON DATABASE SNOWFLAKE TO ROLE CRYPTO_ROLE;
+</code></pre>
+<p>– Step #2: Create Database and Warehouse for Crypto Project</p>
+<pre><code>  CREATE OR REPLACE DATABASE CRYPTO_DB;
+  GRANT OWNERSHIP ON DATABASE CRYPTO_DB TO ROLE CRYPTO_ROLE;
+
+  CREATE OR REPLACE WAREHOUSE CRYPTO_WH 
+     WAREHOUSE_SIZE = XSMALL 
+     AUTO_SUSPEND = 300 
+     AUTO_RESUME = TRUE;
+  GRANT OWNERSHIP ON WAREHOUSE CRYPTO_WH TO ROLE CRYPTO_ROLE;
+
+  USE ROLE CRYPTO_ROLE;
+  USE WAREHOUSE CRYPTO_WH;
+  USE DATABASE CRYPTO_DB;
+  
+  -- Schemas
+  CREATE OR REPLACE SCHEMA EXTERNAL;
+  CREATE OR REPLACE SCHEMA RAW;
+  CREATE OR REPLACE SCHEMA RAW_POS;
+  CREATE OR REPLACE SCHEMA HARMONIZED;
+  CREATE OR REPLACE SCHEMA ANALYTICS;
+</code></pre>
+
+
+      </google-codelab-step>
+    
+      <google-codelab-step label="Page 3: Data Ingestion" duration="0">
+        <pre><code>  import yfinance as yf
+  import os
+  import pandas
+  import boto3
+  import datetime as dt
+  from io import StringIO
+  from dotenv import load_dotenv 
+
+  load_dotenv()
+
+  AWS_ACCESS_KEY_ID = os.getenv(&#39;AWS_ACCESS_KEY_ID&#39;)
+  AWS_SECRET_ACCESS_KEY = os.getenv(&#39;AWS_SECRET_ACCESS_KEY&#39;)
+  AWS_REGION = os.getenv(&#39;AWS_REGION&#39;)
+  AWS_BUCKET_NAME = os.getenv(&#39;S3_BUCKET_NAME&#39;)
+
+  #Crypto dataframe
+  crypto_ticker = [&#34;BTC-USD&#34;, &#34;ETH-USD&#34;, &#34;DOGE-USD&#34;]   #Bitcoin, ethereum, dogecoin
+  end_date = dt.datetime.now()
+  start_date = &#34;2020-01-01&#34;
+
+  # Download historical data 
+  crypto_data = yf.download(crypto_ticker, start_date, end_date)
+  crypto_data = crypto_data.reset_index()
+
+
+
+  #tempfile
+  csv_buffer = StringIO()
+  crypto_data.to_csv(csv_buffer, index = False)
+
+  #Upload to S3
+  s3_client = boto3.client(&#39;s3&#39;,
+     aws_access_key_id=AWS_ACCESS_KEY_ID,
+     aws_secret_access_key=AWS_SECRET_ACCESS_KEY,
+     region_name=AWS_REGION       
+                          )
+  s3_client.put_object(
+     Bucket = AWS_BUCKET_NAME,
+     Key = &#39;crypto_data.csv&#39;,
+     Body = csv_buffer.getvalue()
+  )
+
+  print(f&#34;Data successfully uploaded to S3 bucket&#34;)
+</code></pre>
+<h2 is-upgraded><strong>Summary</strong></h2>
+<p>In this step, we will extract cryptocurrency data from the YFinance API and store it as a CSV file in an AWS S3 bucket. This forms the foundation of the pipeline by providing raw data for further processing.</p>
+<h3 is-upgraded><strong>Steps to Implement</strong></h3>
+<ol type="1">
+<li>Use the YFinance API to fetch historical cryptocurrency data.</li>
+<li>Save the extracted data as a CSV file locally.</li>
+<li>Upload the CSV file to an AWS S3 bucket using the <code>boto3</code> library.</li>
+</ol>
+
+
+      </google-codelab-step>
+    
+      <google-codelab-step label="Page 4: Raw Data Stage" duration="0">
+        <h2 is-upgraded><strong>Summary</strong></h2>
+<p>This step involves ingesting raw data from the S3 bucket into Snowflake&#39;s RAW_STAGE table. We will also configure Snowflake Streams to track incremental updates in the data.</p>
+<h3 is-upgraded><strong>Steps to Implement</strong></h3>
+<ol type="1">
+<li>Create an external stage in Snowflake pointing to the S3 bucket.</li>
+<li>Define the RAW_STAGE table schema in Snowflake.</li>
+<li>Use Snowflake Streams to track changes in the RAW_STAGE table for incremental updates.from snowflake.snowpark import Sessiondef load_crypto_data(session): &#34;&#34;&#34; Load cryptocurrency data into the RAW.CRYPTO_DATA table using the COPY INTO command from an S3 stage. &#34;&#34;&#34; session.use_schema(&#34;RAW&#34;)<pre><code>  copy_command = &#34;&#34;&#34;
+     COPY INTO RAW.CRYPTO_DATA
+     FROM @RAW.CRYPTO_RAW_STAGE
+     FILE_FORMAT = RAW.CSV_FORMAT
+     ON_ERROR = &#39;CONTINUE&#39;;
+  &#34;&#34;&#34;
+  print(&#34;Executing COPY command to load crypto data...&#34;)
+  result = session.sql(copy_command).collect()
+  print(&#34;COPY command result:&#34;)
+  for row in result:
+     print(row)
+</code></pre>
+def validate_crypto_data(session): &#34;&#34;&#34; Validate the loaded data by printing the first 10 rows of the table. &#34;&#34;&#34; print(&#34;Validating loaded crypto data:&#34;) rows = session.table(&#34;RAW.CRYPTO_DATA&#34;).limit(10).collect() for row in rows: print(row)if <strong>name</strong> == &#34;<strong>main</strong>&#34;: # Directly create a session using the automatically loaded configuration with Session.builder.getOrCreate() as session: load_crypto_data(session) validate_crypto_data(session)</li>
+</ol>
+
+
+      </google-codelab-step>
+    
+      <google-codelab-step label="Page 5: Harmonization &amp; Transformation" duration="0">
+        <h2 is-upgraded><strong>Summary</strong></h2>
+<p>In this step, we will harmonize and transform raw data into a structured format using Snowpark Python. This involves cleaning, normalizing, and structuring the data into a harmonized table.</p>
+<h3 is-upgraded><strong>Steps to Implement</strong></h3>
+<ol type="1">
+<li>Use Snowpark Python to read from RAW_STAGE.</li>
+<li>Apply transformations such as currency normalization and missing value handling.</li>
+<li>Write the transformed data into a CRYPTO_HARMONIZED table.for ticker in tickers: ticker_df = raw_df.select( col(&#34;Date&#34;).alias(&#34;date&#34;), lit(ticker).alias(&#34;ticker&#34;), col(f&#34;Open_{ticker.split(&#39;-&#39;)[0]}&#34;).alias(&#34;open&#34;), col(f&#34;High_{ticker.split(&#39;-&#39;)[0]}&#34;).alias(&#34;high&#34;), col(f&#34;Low_{ticker.split(&#39;-&#39;)[0]}&#34;).alias(&#34;low&#34;), col(f&#34;Close_{ticker.split(&#39;-&#39;)[0]}&#34;).alias(&#34;close&#34;), col(f&#34;Volume_{ticker.split(&#39;-&#39;)[0]}&#34;).alias(&#34;volume&#34;) ) transformed_dfs.append(ticker_df)</li>
+</ol>
+<p>Session Initialization and Schema Setup: The code connects to Snowflake using Session.builder.getOrCreate() and sets the schema to RAW to access the raw cryptocurrency data.</p>
+<p>Reading Raw Data: The data is fetched from the CRYPTO_DATA table in the RAW schema, which contains cryptocurrency information for multiple tickers, including price and volume data.</p>
+<p>Processing Multiple Tickers: The code processes data for three specific tickers: &#34;BTC-USD&#34;, &#34;DOGE-USD&#34;, and &#34;ETH-USD&#34;. It iterates through each ticker, selecting relevant columns and renaming them into a standardized format (open, high, low, close, volume).</p>
+<p>Unioning Data for All Tickers: The DataFrames for each ticker are combined using the union method to form a single unified DataFrame containing harmonized data for all tickers.</p>
+<p>Standardizing Timestamps: The date column is standardized to UTC using convert_timezone(&#34;UTC&#34;, to_timestamp(col(&#34;date&#34;))), ensuring consistency across all timestamps.</p>
+<p>Removing Duplicates: The code removes duplicate records from the final DataFrame to ensure that the dataset contains only unique rows.</p>
+
+
+      </google-codelab-step>
+    
+      <google-codelab-step label="Page 6: Creating UDFs" duration="0">
+        <h2 is-upgraded><strong>Summary</strong></h2>
+<p>We will create User-Defined Functions (UDFs) in this step to perform custom operations on our data:</p>
+<ol type="1">
+<li>A SQL UDF for currency normalization.</li>
+<li>A Python UDF for calculating volatility.</li>
+</ol>
+<h3 is-upgraded><strong>Steps to Implement</strong></h3>
+<ol type="1">
+<li>Define SQL UDFs directly in Snowflake for lightweight transformations.</li>
+<li>Write Python UDFs using Snowpark for complex calculations like volatility analysis.def calculate_daily_volatility(prices: list) -&gt; float:<pre><code>  if not prices or len(prices) &lt; 2:
+     return 0.0
+  yesterday = prices[0]
+  today = prices[1]
+  return abs((today - yesterday) / yesterday)
+</code></pre>
+def calculate_weekly_volatility(prices: list) -&gt; float:<pre><code>  if not prices or len(prices) &lt; 2:
+     return 0.0
+  first = prices[0]
+  last = prices[-1]
+  return abs((last - first) / first)
+</code></pre>
+calculate_daily_volatility(prices):Purpose: This function calculates the daily volatility, which represents how much the price has changed between two consecutive days. Logic: It checks if there are at least two prices in the list. If not, it returns 0.0 since volatility can&#39;t be calculated with insufficient data. It then calculates the absolute percentage change between the first two prices in the list (yesterday and today).Output: A float value representing the absolute percentage change between the two prices, showing the magnitude of daily price movement. calculate_weekly_volatility(prices):Purpose: This function calculates the weekly volatility, which measures the price change between the start and the end of a period (often a week). Logic: It checks if the list has at least two prices. If not, it returns 0.0. It calculates the absolute percentage change between the first price (first) and the last price (last) in the list. ​Output: A float value representing the absolute percentage change between the first and last prices in the list, showing the magnitude of weekly price movement.</li>
+</ol>
+
+
+      </google-codelab-step>
+    
+      <google-codelab-step label="Page 7: Analytics &amp; Aggregation" duration="0">
+        <h2 is-upgraded><strong>Summary</strong></h2>
+<p>This step focuses on building pre-computed analytics tables that aggregate key metrics (e.g., average volatility, daily price changes). These tables will be used for reporting and analysis.</p>
+<h3 is-upgraded><strong>Steps to Implement</strong></h3>
+<ol type="1">
+<li>Create an analytics table (CRYPTO_ANALYTICS) in Snowflake.</li>
+<li>Write stored procedures to update analytics tables periodically.</li>
+</ol>
+
+
+      </google-codelab-step>
+    
+      <google-codelab-step label="Page 8: Task Orchestration &amp; Automation" duration="0">
+        <h2 is-upgraded><strong>Summary</strong></h2>
+<p>Automate tasks such as data ingestion, transformation, and analytics updates using:</p>
+<ol type="1">
+<li>Snowflake Tasks for scheduling workflows within Snowflake.</li>
+<li>Airflow DAGs for orchestrating external processes.</li>
+<li>GitHub Actions for CI/CD integration of Snowpark Python code.</li>
+</ol>
+<h3 is-upgraded><strong>Steps to Implement</strong></h3>
+<ol type="1">
+<li>Define task dependencies using Snowflake Tasks.</li>
+<li>Create Airflow DAGs to trigger pipeline steps.</li>
+<li>Set up GitHub Actions workflows for automated deployments.</li>
+</ol>
+
+
+      </google-codelab-step>
+    
+      <google-codelab-step label="Page 9: Testing &amp; Validation" duration="0">
+        <h2 is-upgraded><strong>Summary</strong></h2>
+<p>Ensure data quality by writing unit tests for UDFs, stored procedures, and transformations.</p>
+<h3 is-upgraded><strong>Steps to Implement</strong></h3>
+<ol type="1">
+<li>Write unit tests for SQL UDFs (e.g., currency normalization).</li>
+<li>Test Python UDFs (e.g., volatility calculations) locally or in a test environment.</li>
+<li>Validate stored procedures with test datasets.</li>
+</ol>
+
+
+      </google-codelab-step>
+    
+      <google-codelab-step label="Page 10: Environment Management" duration="0">
+        <h2 is-upgraded><strong>Summary</strong></h2>
+<p>Use Jinja templates to manage configuration files across DEV/PROD environments efficiently.</p>
+<h3 is-upgraded><strong>Steps to Implement</strong></h3>
+<ol type="1">
+<li>Create Jinja templates for Snowflake objects (tables, stages).</li>
+<li>Parameterize configurations like database names or schemas.</li>
+<li>Render templates dynamically during deployment based on environment variables.</li>
+</ol>
+
+
+      </google-codelab-step>
+    
+  </google-codelab>
+
+  <script src="https://storage.googleapis.com/claat-public/native-shim.js"></script>
+  <script src="https://storage.googleapis.com/claat-public/custom-elements.min.js"></script>
+  <script src="https://storage.googleapis.com/claat-public/prettify.js"></script>
+  <script src="https://storage.googleapis.com/claat-public/codelab-elements.js"></script>
+  <script src="//support.google.com/inapp/api.js"></script>
+
+</body>
+</html>
