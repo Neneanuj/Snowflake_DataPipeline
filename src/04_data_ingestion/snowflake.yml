@@ -4,7 +4,7 @@ snowpark:
   stage_name: "raw.deployment"
   src: "data_ingestion/"
   procedures:
-    - name: "load_crpyto_data"
+    - name: "load_crypto_data"
       database: "crypto_db"  
       schema: "raw"
       handler: "04_load_crypto_data.main"
