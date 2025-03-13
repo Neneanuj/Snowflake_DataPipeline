@@ -10,7 +10,7 @@ snowpark:
       handler: "data_harmonization.main"
       runtime: "3.8"  
       signature:
-        - name: "session"
+        - name: "session_params"
           type: "variant"
       returns: "string"
   

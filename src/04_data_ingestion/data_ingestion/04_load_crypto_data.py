@@ -3,42 +3,38 @@ from snowflake.snowpark import Session
 def load_crypto_data(session):
     """
     Load cryptocurrency data into the RAW.CRYPTO_DATA table using the COPY INTO command from an S3 stage.
+    This function uses fully qualified names so that no USE command is needed.
     """
-    session.use_schema("RAW")
-    
     copy_command = """
         COPY INTO RAW.CRYPTO_DATA
-        FROM @RAW.CRYPTO_S3_INIT
+        FROM @RAW.CRYPTO_RAW_STAGE
         FILE_FORMAT = RAW.CSV_FORMAT
         ON_ERROR = 'CONTINUE'
     """
     
     result = session.sql(copy_command).collect()
-    
     return f"COPY command executed. Processed {len(result)} rows."
 
 def validate_crypto_data(session):
     """
-    Validate the loaded data by printing the first 10 rows of the table.
+    Validate the loaded data by retrieving the first 10 rows from RAW.CRYPTO_DATA.
+    Uses fully qualified table name.
     """
-    session.use_schema("RAW")
     rows = session.table("RAW.CRYPTO_DATA").limit(10).collect()
     return rows
 
-def main():
+def main(session):
     """
-    Create a session and execute the data loading process.
+    Main function to execute the data loading process.
     """
-    # Create a session within the function
-    session = Session.builder.getOrCreate()
-    
-    try:
-        message = load_crypto_data(session)
-        return message
-    finally:
-        # Make sure to close the session
-        session.close()
+    message = load_crypto_data(session)
+    # Optionally, you can call validate_crypto_data(session) to retrieve sample rows.
+    return message
 
+# For local testing
 if __name__ == "__main__":
-    # For local testing
-    print(main())
+    session = Session.builder.getOrCreate()
+    try:
+        print(main(session))
+    finally:
+        session.close()
